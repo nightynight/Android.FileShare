@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:ShareDemo="http://schemas.android.com/apk/res-auto">
+
+    <item android:id="@+id/action_share"
+        android:title="share"
+        ShareDemo:showAsAction="never" />
+
+    <item android:id="@+id/action_share_binary"
+        android:title="share_picture"
+        ShareDemo:showAsAction="never" />
+
+    <item android:id="@+id/action_share_multiple"
+        android:title="share_multiple"
+        ShareDemo:showAsAction="never" />
+</menu>

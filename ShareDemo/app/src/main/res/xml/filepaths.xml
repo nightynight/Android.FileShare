@@ -1,0 +1,4 @@
+<paths>
+    <files-path path="images/" name="myimages" />
+    <!--<files-path>标签共享的是在我们应用的内部存储中“files/”目录下的目录-->
+</paths>
