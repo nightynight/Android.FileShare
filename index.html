@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Android.fileshare by nightynight</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Android.fileshare</h1>
+      <h2 class="project-tagline"></h2>
+      <a href="https://github.com/nightynight/Android.FileShare" class="btn">View on GitHub</a>
+      <a href="https://github.com/nightynight/Android.FileShare/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/nightynight/Android.FileShare/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <p>本文涉及的权限</p>
+
+<pre><code>&lt;uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /&gt;
+&lt;uses-permission android:name="android.permission.MODE_WORLD_READABLE" /&gt;
+&lt;uses-permission android:name="android.permission.MODE_WORLD_WRITEABLE" /&gt;
+&lt;uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS" /&gt;
+</code></pre>
+
+<h2>
+<a id="一分享文件" class="anchor" href="#%E4%B8%80%E5%88%86%E4%BA%AB%E6%96%87%E4%BB%B6" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>一.分享文件</h2>
+
+<h3>
+<a id="1分享文本内容send-text-content" class="anchor" href="#1%E5%88%86%E4%BA%AB%E6%96%87%E6%9C%AC%E5%86%85%E5%AE%B9send-text-content" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>1.分享文本内容（Send Text Content）</h3>
+
+<pre><code>Intent sendIntent = new Intent();
+sendIntent.setAction(Intent.ACTION_SEND);
+//为intent设置一些标准的附加值，例如：EXTRA_EMAIL, EXTRA_CC, EXTRA_BCC, EXTRA_SUBJECT等。
+// 如果接收程序没有针对那些做特殊的处理，则不会有对应的反应。
+sendIntent.putExtra(Intent.EXTRA_TEXT, "This is my text to send.");
+sendIntent.setType("text/plain");
+startActivity(Intent.createChooser(sendIntent, "send title"));
+//调用了Intent.createChooser()，那么Android总是会显示可供选择。
+</code></pre>
+
+<h3>
+<a id="2分享二进制内容send-binary-content" class="anchor" href="#2%E5%88%86%E4%BA%AB%E4%BA%8C%E8%BF%9B%E5%88%B6%E5%86%85%E5%AE%B9send-binary-content" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>2.分享二进制内容(Send Binary Content)</h3>
+
+<p>分享二进制的数据需要结合设置特定的MIME类型，需要在EXTRA_STREAM里面放置数据的URI,下面有个分享图片的例子，该例子也可以修改用于分享任何类型的二进制数据：</p>
+
+<pre><code>
+Uri imageUri=Uri.fromFile(new File(Environment.getExternalStorageDirectory().toString()+"/1.jpg"));
+Log.i("test","-------------+++++++++"+imageUri.toString());
+Intent shareIntent = new Intent();
+shareIntent.setAction(Intent.ACTION_SEND);
+shareIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
+shareIntent.setType("image/jpg");
+startActivity(Intent.createChooser(shareIntent, "send picture"));
+</code></pre>
+
+<p>此处的Uri用了一个外存中的文件，因为外存中的文件所有应用都能访问，所以没有权限的问题。如果想共享该应用程序中的文件，即内部文件，需要用到Content Provider。这里用FileProvider，这是ContentProvider的一个子类。
+先在manifest中加入以下代码：</p>
+
+<pre><code>&lt;provider
+    android:name="android.support.v4.content.FileProvider"
+    android:authorities="youPackageName.fileprovider"
+    android:grantUriPermissions="true"
+    android:exported="false"&gt;
+    &lt;meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/filepaths" /&gt;
+&lt;/provider&gt;
+</code></pre>
+
+<p>然后在res中加入xml/filepaths.xml（该文件名与manifest文件中对应）</p>
+
+<pre><code>&lt;paths&gt;
+    &lt;files-path path="images/" name="myimages" /&gt;
+    &lt;!--&lt;files-path&gt;标签共享的是在我们应用的内部存储中“files/”目录下的目录--&gt;
+&lt;/paths&gt;
+</code></pre>
+
+<p>然后Uri可以这样构建：</p>
+
+<pre><code>File imagePath = new File(getFilesDir(), "images");
+File newFile = new File(getFilesDir(), "images/1.jpg");
+Uri imageUri = getUriForFile(this,"youPackageName.fileprovider",newFile);
+</code></pre>
+
+<p>这样就把/data/data/youPacksgeName/files/image/1.jpg解析为：
+content://youPackageName.fileprovider/myimages/1.jpg，这样其他应用程序就不会知道该文件的具体地址，又可以使用该文件，而且使用完后权限被自动收回，保证了文件的安全性。</p>
+
+<h3>
+<a id="3发送多块内容send-multiple-pieces-of-content" class="anchor" href="#3%E5%8F%91%E9%80%81%E5%A4%9A%E5%9D%97%E5%86%85%E5%AE%B9send-multiple-pieces-of-content" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>3.发送多块内容(Send Multiple Pieces of Content)</h3>
+
+<pre><code>ArrayList&lt;Uri&gt; imageUris = new ArrayList&lt;Uri&gt;();
+imageUris.add(imageUri1); // Add your image URIs hereimageUris.add(imageUri2);
+
+Intent shareIntent = new Intent();
+shareIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, imageUris);
+shareIntent.setType("image/*");
+startActivity(Intent.createChooser(shareIntent, "Share images to.."));
+//如果分享3张JPEG的图片，那么MIME类型仍然是image/jpeg。
+//如果是不同图片格式的话，应该是用image/*来匹配那些可以接收任何图片类型的activity。
+//如果需要分享多种不同类型的数据，可以使用*/*来表示MIME。
+</code></pre>
+
+<h2>
+<a id="二接收其他程序分享的文件" class="anchor" href="#%E4%BA%8C%E6%8E%A5%E6%94%B6%E5%85%B6%E4%BB%96%E7%A8%8B%E5%BA%8F%E5%88%86%E4%BA%AB%E7%9A%84%E6%96%87%E4%BB%B6" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>二.接收其他程序分享的文件</h2>
+
+<p>首先要更新manifest文件，告诉它可以接收哪些文件分享：</p>
+
+<pre><code>&lt;activity android:name=".ui.MyActivity"&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name="android.intent.action.SEND" /&gt;
+        &lt;category android:name="android.intent.category.DEFAULT" /&gt;
+        &lt;data android:mimeType="image/*" /&gt;
+    &lt;/intent-filter&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name="android.intent.action.SEND" /&gt;
+        &lt;category android:name="android.intent.category.DEFAULT" /&gt;
+        &lt;data android:mimeType="text/plain" /&gt;
+    &lt;/intent-filter&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name="android.intent.action.SEND_MULTIPLE" /&gt;
+        &lt;category android:name="android.intent.category.DEFAULT" /&gt;
+        &lt;data android:mimeType="image/*" /&gt;
+    &lt;/intent-filter&gt;
+&lt;/activity&gt;
+</code></pre>
+
+<p>处理收到的数据：</p>
+
+<pre><code>Intent intent = getIntent();
+String action = intent.getAction();
+String type = intent.getType();
+
+if (Intent.ACTION_SEND.equals(action) &amp;&amp; type != null) {
+    if ("text/plain".equals(type)) {
+        handleSendText(intent); // Handle text being sent
+    } else if (type.startsWith("image/")) {
+        handleSendImage(intent); // Handle single image being sent
+    }
+} else if (Intent.ACTION_SEND_MULTIPLE.equals(action) &amp;&amp; type != null) {
+    if (type.startsWith("image/")) {
+        handleSendMultipleImages(intent); // Handle multiple images being sent
+    }
+} else {
+    // Handle other intents, such as being started from the home screen
+}
+</code></pre>
+
+<p>对于文本，可以用
+String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+获取文本的值；
+对于图片或其他二进制文件，可以用
+Uri imageUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
+获取Uri，然后对其操作。比如操作图片，要添加到ImageView中：</p>
+
+<pre><code>//通过下面的方法可以从一个FileProvider提供的Uri中获取到文件
+ParcelFileDescriptor mInputPFD = getContentResolver().openFileDescriptor(imageUri, "r");
+FileDescriptor fd = mInputPFD.getFileDescriptor();
+imageView.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(fd)));
+</code></pre>
+
+<h2>
+<a id="三发送和响应文件请求" class="anchor" href="#%E4%B8%89%E5%8F%91%E9%80%81%E5%92%8C%E5%93%8D%E5%BA%94%E6%96%87%E4%BB%B6%E8%AF%B7%E6%B1%82" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>三.发送和响应文件请求</h2>
+
+<h3>
+<a id="1发送文件请求" class="anchor" href="#1%E5%8F%91%E9%80%81%E6%96%87%E4%BB%B6%E8%AF%B7%E6%B1%82" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>1.发送文件请求</h3>
+
+<pre><code>Intent mRequestFileIntent = new Intent(Intent.ACTION_PICK);
+mRequestFileIntent.setType("image/jpg");
+startActivityForResult(mRequestFileIntent, 0);
+</code></pre>
+
+<p>下面是处理返回的文件分享</p>
+
+<pre><code>@Override
+public void onActivityResult(int requestCode, int resultCode,
+                             Intent returnIntent) {
+    if (resultCode != RESULT_OK) {
+        return;
+    } else {
+        Uri returnUri = returnIntent.getData();
+
+        //获取文件相关信息
+        //获取文件的MIME类型
+        String mimeType = getContentResolver().getType(returnUri);
+        //获取文件名及文件大小
+        Cursor returnCursor = getContentResolver().query(returnUri, null, null, null, null);
+        int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+        int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
+        returnCursor.moveToFirst();
+        String name=returnCursor.getString(nameIndex);
+        String size=returnCursor.getString(sizeIndex);
+
+        try {
+            //把拿到的图片放到ImageView中
+            ParcelFileDescriptor mInputPFD = getContentResolver().openFileDescriptor(returnUri, "r");
+            FileDescriptor fd = mInputPFD.getFileDescriptor();
+            imageView.setImageBitmap(BitmapFactory.decodeStream(new FileInputStream(fd)));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            Log.e("MainActivity", "File not found.");
+            return;
+        }
+    }
+}
+</code></pre>
+
+<h3>
+<a id="2响应文件请求" class="anchor" href="#2%E5%93%8D%E5%BA%94%E6%96%87%E4%BB%B6%E8%AF%B7%E6%B1%82" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>2.响应文件请求</h3>
+
+<p>1.创建一个选择文件的Activity</p>
+
+<pre><code>&lt;activity android:name=".MainActivity"&gt;
+    &lt;intent-filter&gt;
+        &lt;action
+            android:name="android.intent.action.PICK"/&gt;
+        &lt;category
+            android:name="android.intent.category.DEFAULT"/&gt;
+        &lt;category
+            android:name="android.intent.category.OPENABLE"/&gt;
+        &lt;data android:mimeType="text/plain"/&gt;
+        &lt;data android:mimeType="image/*"/&gt;
+    &lt;/intent-filter&gt;
+&lt;/activity&gt;
+</code></pre>
+
+<p>2.设置provider</p>
+
+<pre><code>&lt;provider
+    android:name="android.support.v4.content.FileProvider"
+    android:authorities="youPackageName.fileprovider"
+    android:grantUriPermissions="true"
+    android:exported="false"&gt;
+    &lt;meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/filepaths" /&gt;
+&lt;/provider&gt;
+</code></pre>
+
+<p>3.选择和发送文件分享</p>
+
+<pre><code>Intent inetnt=getIntent();
+String name=getCallingPackage();
+if(getCallingPackage()!=null){//判断是否是其他应用发出请求而打开的Activity
+    File requestFile = mImageFiles[position];//此处是从GridView中选取的图片，可以用自己的选择文件方式
+    Uri imageUri = getUriForFile(MainActivity.this,"com.brokepal.fileresponse.fileprovider",requestFile);
+    if (imageUri != null) {
+        mResultIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);//为文件授权
+        mResultIntent.setDataAndType(imageUri, getContentResolver().getType(imageUri));
+        MainActivity.this.setResult(Activity.RESULT_OK, mResultIntent);
+        finish();
+    } else {
+        mResultIntent.setDataAndType(null, "");
+        MainActivity.this.setResult(RESULT_CANCELED, mResultIntent);
+    }
+}
+</code></pre>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/nightynight/Android.FileShare">Android.fileshare</a> is maintained by <a href="https://github.com/nightynight">nightynight</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
